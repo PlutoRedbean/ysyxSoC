@@ -192,7 +192,7 @@ import "DPI-C" function void psram_write(input int waddr, input byte wdata);
 
   always @(posedge sck) begin
     if (PSRAM_state == WAIT && data_cnt_done && ~is_write) begin // 有读请求时
-      psram_read({8'h00, addr[23:0]}, rdata_r);
+      psram_read({8'h80, addr[23:0]}, rdata_r);
     end
   end
 
@@ -201,16 +201,16 @@ import "DPI-C" function void psram_write(input int waddr, input byte wdata);
   always @(negedge sck) begin
     if (PSRAM_state == WRITE && is_write) begin // 有写请求时
       if (data_cnt == 6'd4) begin
-        psram_write({8'h00, addr[23:0] + 24'd0}, wdata[31:24]);
+        psram_write({8'h80, addr[23:0] + 24'd0}, wdata[31:24]);
       end
       else if (data_cnt == 6'd12) begin
-        psram_write({8'h00, addr[23:0] + 24'd1}, wdata[23:16]);
+        psram_write({8'h80, addr[23:0] + 24'd1}, wdata[23:16]);
       end
       else if (data_cnt == 6'd20) begin
-        psram_write({8'h00, addr[23:0] + 24'd2}, wdata[15:8]);
+        psram_write({8'h80, addr[23:0] + 24'd2}, wdata[15:8]);
       end
       else if (data_cnt == 6'd28) begin
-        psram_write({8'h00, addr[23:0] + 24'd3}, wdata[7:0]);
+        psram_write({8'h80, addr[23:0] + 24'd3}, wdata[7:0]);
       end
     end
   end

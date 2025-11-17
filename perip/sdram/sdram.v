@@ -141,9 +141,11 @@ module sdram(
     end
   end
 
+  reg [12:0] active_row [3:0];
   always @(posedge clk) begin
     if (active_we) begin
       row_addr_r  <= a;
+      active_row[bank_addr] <= a;
     end
   end
 
@@ -185,7 +187,7 @@ module sdram(
   end
   always @(posedge clk) begin
     if (col_addr_valid) begin
-      addr_shift_reg[0] <= { bank_addr, row_addr_r, col_addr };
+      addr_shift_reg[0] <= { active_row[bank_addr], bank_addr, col_addr };
     end
     else begin
       addr_shift_reg[0] <= addr_shift_reg[0] + 1'd1;
@@ -228,6 +230,9 @@ module sdram(
 
   reg [31:0] sdram_rdata_r;
   reg [15:0] rdata_r;
+
+// `ifdef ysyx_25050158_SIMULATION
+
 import "DPI-C" function void sdram_read(input int addr, output int data);
 import "DPI-C" function void sdram_write(input int addr, input byte data);
   always @(posedge clk) begin
@@ -273,5 +278,7 @@ import "DPI-C" function void sdram_write(input int addr, input byte data);
       end
     end
   end
+
+// `endif
 
 endmodule

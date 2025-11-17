@@ -50,7 +50,7 @@ module psram(
 
   assign is_write = cmd == 8'h38;
 
-  MuxKey #(6, 3, 4) douten_ctrl (
+  ysyx_25050158_MuxKey #(6, 3, 4) douten_ctrl (
     douten,
     PSRAM_state,
   {
@@ -64,7 +64,7 @@ module psram(
 
   wire is_qpi;
 
-  MuxKey #(6, 3, 3 + 6) data_sig_ctrl (
+  ysyx_25050158_MuxKey #(6, 3, 3 + 6) data_sig_ctrl (
     { data_step, data_max },
     PSRAM_state,
   {
@@ -183,6 +183,8 @@ module psram(
   assign dio[3] = douten[3] ? dout[3] : 1'bz;
   assign din = dio;
 
+// `ifdef ysyx_25050158_SIMULATION
+
 import "DPI-C" function void test_data(input int data);
 import "DPI-C" function void psram_read(input int raddr, output int rdata);
 import "DPI-C" function void psram_write(input int waddr, input byte wdata);
@@ -220,5 +222,7 @@ import "DPI-C" function void psram_write(input int waddr, input byte wdata);
       test_data(32'h66666666);
     end
   end
+
+// `endif
 
 endmodule

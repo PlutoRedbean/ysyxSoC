@@ -72,12 +72,12 @@ wire is_flash;
 wire [2:0] XIP_state, XIP_next;
 wire [1:0] APB_state, APB_next;
 
-Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
-Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
+ysyx_25050158_Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
+ysyx_25050158_Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
 
 wire transfer;
 
-MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
+ysyx_25050158_MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
   NORMAL       , is_flash && in_psel ? XIP_INIT_SS   : NORMAL       ,
   XIP_INIT_SS  , wb_ack_o ? XIP_INIT_CTRL : XIP_INIT_SS  ,
   XIP_INIT_CTRL, wb_ack_o ? XIP_INIT_DIVI : XIP_INIT_CTRL,
@@ -88,7 +88,7 @@ MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
   XIP_READ     , wb_ack_o ? NORMAL        : XIP_READ
 });
 
-MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
+ysyx_25050158_MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
   IDLE  , transfer ? SETUP : IDLE,
   SETUP , ACCESS,
   ACCESS, ~wb_ack_o ? ACCESS :
@@ -97,7 +97,7 @@ MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
 
 assign transfer = XIP_state != NORMAL;
 
-MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
+ysyx_25050158_MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
   { XIP_in_paddr, XIP_in_pwdata, XIP_in_pstrb, XIP_in_pwrite },
   XIP_state,
 {
@@ -111,7 +111,7 @@ MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
   XIP_READ     , { 32'h10001000, 32'h00000000                  , 4'b0000, 1'b0 }
 });
 
-MuxKey #(3, 2, 1 + 1) APB_signal_mux (
+ysyx_25050158_MuxKey #(3, 2, 1 + 1) APB_signal_mux (
   { XIP_in_psel, XIP_in_penable },
   APB_state,
 {

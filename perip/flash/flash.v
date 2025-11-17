@@ -11,7 +11,11 @@ module flash (
 );
   wire reset = ss;
 
-  typedef enum [2:0] { cmd_t, addr_t, data_t, err_t } state_t;
+  localparam cmd_t  = 3'd0;
+  localparam addr_t = 3'd1;
+  localparam data_t = 3'd2;
+  localparam err_t  = 3'd3;
+  // typedef enum [2:0] { cmd_t, addr_t, data_t, err_t } state_t;
   reg [2:0]  state;
   reg [7:0]  counter;
   reg [7:0]  cmd;
@@ -70,16 +74,22 @@ module flash (
   end
 
   wire [31:0] data_bswap = {rdata[7:0], rdata[15:8], rdata[23:16], rdata[31:24]};
+  wire [31:0] tmp0;
+  assign tmp0 = {counter == 8'd0 ? data_bswap : data};
   always@(posedge sck or posedge reset) begin
     if (reset) data <= 32'd0;
     else if (state == data_t) begin
-      data <= { {counter == 8'd0 ? data_bswap : data}[30:0], 1'b0 };
+      data <= { tmp0[30:0], 1'b0 };
     end
   end
 
-  assign miso = ss ? 1'b1 : ({(state == data_t && counter == 8'd0) ? data_bswap : data}[31]);
+  wire [31:0] tmp1;
+  assign tmp1 = {counter == 8'd0 ? data_bswap : data};
+  assign miso = ss ? 1'b1 : tmp1[31];
 
 endmodule
+
+`ifdef ysyx_25050158_SIMULATION
 
 import "DPI-C" function void flash_read(input int addr, output int data);
 
@@ -99,3 +109,34 @@ module flash_cmd(
       end
   end
 endmodule
+
+`else
+
+module flash_cmd(
+  input             clock,
+  input             valid,
+  input       [7:0] cmd,
+  input      [31:0] addr,
+  output reg [31:0] data
+);
+
+  reg [7:0] flash [0 : (16 * 1024 * 1024) - 1];
+
+  initial begin
+    $readmemh("~/ysyx-workbench/rt-thread-am/bsp/abstract-machine/build/iverilog.hex", flash);
+  end
+
+  always@(posedge clock) begin
+    if (valid)
+      if (cmd == 8'h03) data <= {flash[{8'h00, addr[29:0]}        ],
+                                 flash[{8'h00, addr[29:0]} + 32'd1],
+                                 flash[{8'h00, addr[29:0]} + 32'd2],
+                                 flash[{8'h00, addr[29:0]} + 32'd3]};
+      else begin
+        $fwrite(32'h80000002, "Assertion failed: Unsupport command `%xh`, only support `03h` read command\n", cmd);
+        $fatal;
+      end
+  end
+endmodule
+
+`endif

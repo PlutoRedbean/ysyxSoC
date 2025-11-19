@@ -50,7 +50,11 @@ module psram(
 
   assign is_write = cmd == 8'h38;
 
+`ifdef TAPE_OUT_SIM
   ysyx_25050158_MuxKey #(6, 3, 4) douten_ctrl (
+`else   // TAPE_OUT_SIM
+  MuxKey #(6, 3, 4) douten_ctrl (
+`endif
     douten,
     PSRAM_state,
   {
@@ -64,7 +68,11 @@ module psram(
 
   wire is_qpi;
 
+`ifdef TAPE_OUT_SIM
   ysyx_25050158_MuxKey #(6, 3, 3 + 6) data_sig_ctrl (
+`else   // TAPE_OUT_SIM
+  MuxKey #(6, 3, 3 + 6) data_sig_ctrl (
+`endif
     { data_step, data_max },
     PSRAM_state,
   {

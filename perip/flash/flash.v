@@ -89,8 +89,6 @@ module flash (
 
 endmodule
 
-`ifdef ysyx_25050158_SIMULATION
-
 import "DPI-C" function void flash_read(input int addr, output int data);
 
 module flash_cmd(
@@ -109,34 +107,3 @@ module flash_cmd(
       end
   end
 endmodule
-
-`else
-
-module flash_cmd(
-  input             clock,
-  input             valid,
-  input       [7:0] cmd,
-  input      [31:0] addr,
-  output reg [31:0] data
-);
-
-  reg [7:0] flash [0 : (16 * 1024 * 1024) - 1];
-
-  initial begin
-    $readmemh("~/ysyx-workbench/rt-thread-am/bsp/abstract-machine/build/iverilog.hex", flash);
-  end
-
-  always@(posedge clock) begin
-    if (valid)
-      if (cmd == 8'h03) data <= {flash[{8'h00, addr[29:0]}        ],
-                                 flash[{8'h00, addr[29:0]} + 32'd1],
-                                 flash[{8'h00, addr[29:0]} + 32'd2],
-                                 flash[{8'h00, addr[29:0]} + 32'd3]};
-      else begin
-        $fwrite(32'h80000002, "Assertion failed: Unsupport command `%xh`, only support `03h` read command\n", cmd);
-        $fatal;
-      end
-  end
-endmodule
-
-`endif

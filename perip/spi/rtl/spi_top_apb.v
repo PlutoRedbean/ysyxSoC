@@ -72,53 +72,7 @@ wire is_flash;
 wire [2:0] XIP_state, XIP_next;
 wire [1:0] APB_state, APB_next;
 
-ysyx_25050158_Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
-ysyx_25050158_Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
-
 wire transfer;
-
-ysyx_25050158_MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
-  NORMAL       , is_flash && in_psel ? XIP_INIT_SS   : NORMAL       ,
-  XIP_INIT_SS  , wb_ack_o ? XIP_INIT_CTRL : XIP_INIT_SS  ,
-  XIP_INIT_CTRL, wb_ack_o ? XIP_INIT_DIVI : XIP_INIT_CTRL,
-  XIP_INIT_DIVI, wb_ack_o ? XIP_SEND      : XIP_INIT_DIVI,
-  XIP_SEND     , wb_ack_o ? XIP_BOOT      : XIP_SEND     ,
-  XIP_BOOT     , wb_ack_o ? XIP_WAIT      : XIP_BOOT     ,
-  XIP_WAIT     , wb_ack_o && ~in_prdata[8] ? XIP_READ      : XIP_WAIT     ,
-  XIP_READ     , wb_ack_o ? NORMAL        : XIP_READ
-});
-
-ysyx_25050158_MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
-  IDLE  , transfer ? SETUP : IDLE,
-  SETUP , ACCESS,
-  ACCESS, ~wb_ack_o ? ACCESS :
-          transfer  ? SETUP  : IDLE
-});
-
-assign transfer = XIP_state != NORMAL;
-
-ysyx_25050158_MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
-  { XIP_in_paddr, XIP_in_pwdata, XIP_in_pstrb, XIP_in_pwrite },
-  XIP_state,
-{
-  NORMAL       , { 32'h00000000, 32'h00000000                  , 4'b0000, 1'b0 },
-  XIP_INIT_SS  , { 32'h10001018, 32'h00000001                  , 4'b0001, 1'b1 },
-  XIP_INIT_CTRL, { 32'h10001010, 32'h00002440                  , 4'b0011, 1'b1 },
-  XIP_INIT_DIVI, { 32'h10001014, 32'h00000000                  , 4'b1111, 1'b1 },
-  XIP_SEND     , { 32'h10001004, {8'h03, in_paddr[23:2], 2'b00}, 4'b1111, 1'b1 },
-  XIP_BOOT     , { 32'h10001010, 32'h00002540                  , 4'b0011, 1'b1 },
-  XIP_WAIT     , { 32'h10001010, 32'h00000000                  , 4'b0000, 1'b0 },
-  XIP_READ     , { 32'h10001000, 32'h00000000                  , 4'b0000, 1'b0 }
-});
-
-ysyx_25050158_MuxKey #(3, 2, 1 + 1) APB_signal_mux (
-  { XIP_in_psel, XIP_in_penable },
-  APB_state,
-{
-  IDLE  , { 1'b0, 1'b0 },
-  SETUP , { 1'b1, 1'b0 },
-  ACCESS, { 1'b1, 1'b1 }
-});
 
 wire [ 4:0] wb_adr_i;
 wire [31:0] wb_dat_i;
@@ -135,6 +89,73 @@ wire [ 3:0] XIP_in_pstrb  ;
 wire        XIP_in_pwrite ;
 wire        XIP_in_psel   ;
 wire        XIP_in_penable;
+
+`ifdef TAPE_OUT_SIM
+ysyx_25050158_Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
+ysyx_25050158_Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
+`else
+Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
+Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
+`endif
+
+`ifdef TAPE_OUT_SIM
+ysyx_25050158_MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
+`else
+MuxKeyWithDefault #(8, 3, 3) XIP_FSM (XIP_next, XIP_state, NORMAL, {
+`endif
+  NORMAL       , is_flash && in_psel ? XIP_INIT_SS   : NORMAL       ,
+  XIP_INIT_SS  , wb_ack_o ? XIP_INIT_CTRL : XIP_INIT_SS  ,
+  XIP_INIT_CTRL, wb_ack_o ? XIP_INIT_DIVI : XIP_INIT_CTRL,
+  XIP_INIT_DIVI, wb_ack_o ? XIP_SEND      : XIP_INIT_DIVI,
+  XIP_SEND     , wb_ack_o ? XIP_BOOT      : XIP_SEND     ,
+  XIP_BOOT     , wb_ack_o ? XIP_WAIT      : XIP_BOOT     ,
+  XIP_WAIT     , wb_ack_o && ~in_prdata[8] ? XIP_READ      : XIP_WAIT     ,
+  XIP_READ     , wb_ack_o ? NORMAL        : XIP_READ
+});
+
+`ifdef TAPE_OUT_SIM
+ysyx_25050158_MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
+`else
+MuxKeyWithDefault #(3, 2, 2) APB_FSM (APB_next, APB_state, IDLE, {
+`endif
+  IDLE  , transfer ? SETUP : IDLE,
+  SETUP , ACCESS,
+  ACCESS, ~wb_ack_o ? ACCESS :
+          transfer  ? SETUP  : IDLE
+});
+
+`ifdef TAPE_OUT_SIM
+ysyx_25050158_MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
+`else
+MuxKey #(8, 3, 32 + 32 + 4 + 1) data_mux (
+`endif
+  { XIP_in_paddr, XIP_in_pwdata, XIP_in_pstrb, XIP_in_pwrite },
+  XIP_state,
+{
+  NORMAL       , { 32'h00000000, 32'h00000000                  , 4'b0000, 1'b0 },
+  XIP_INIT_SS  , { 32'h10001018, 32'h00000001                  , 4'b0001, 1'b1 },
+  XIP_INIT_CTRL, { 32'h10001010, 32'h00002440                  , 4'b0011, 1'b1 },
+  XIP_INIT_DIVI, { 32'h10001014, 32'h00000000                  , 4'b1111, 1'b1 },
+  XIP_SEND     , { 32'h10001004, {8'h03, in_paddr[23:2], 2'b00}, 4'b1111, 1'b1 },
+  XIP_BOOT     , { 32'h10001010, 32'h00002540                  , 4'b0011, 1'b1 },
+  XIP_WAIT     , { 32'h10001010, 32'h00000000                  , 4'b0000, 1'b0 },
+  XIP_READ     , { 32'h10001000, 32'h00000000                  , 4'b0000, 1'b0 }
+});
+
+`ifdef TAPE_OUT_SIM
+ysyx_25050158_MuxKey #(3, 2, 1 + 1) APB_signal_mux (
+`else
+MuxKey #(3, 2, 1 + 1) APB_signal_mux (
+`endif
+  { XIP_in_psel, XIP_in_penable },
+  APB_state,
+{
+  IDLE  , { 1'b0, 1'b0 },
+  SETUP , { 1'b1, 1'b0 },
+  ACCESS, { 1'b1, 1'b1 }
+});
+
+assign transfer = XIP_state != NORMAL;
 
 spi_top u0_spi_top (
   .wb_clk_i(clock),

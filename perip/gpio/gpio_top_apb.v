@@ -24,6 +24,12 @@ module gpio_top_apb(
   output [7:0]  gpio_seg_7
 );
 
+`ifndef TAPE_OUT_SIM
+
+`define LED_ADDR    32'h10002000
+`define SWITCH_ADDR 32'h10002004
+`define SEG_ADDR    32'h10002008
+
   reg [31:0] led        ;
   reg [31:0] seg_data   ;
   reg [31:0] in_prdata_r;
@@ -50,7 +56,7 @@ module gpio_top_apb(
       in_prdata_r <= 32'd0;
     end
     else if (next == ACCESS && in_pwrite) begin
-      if ({ in_paddr[31:2], 2'b00 } == 32'h10002000) begin
+      if ({ in_paddr[31:2], 2'b00 } == `LED_ADDR) begin
         led <= {
           in_pwdata[31:24] & {8{in_pstrb[3]}},
           in_pwdata[23:16] & {8{in_pstrb[2]}},
@@ -58,7 +64,7 @@ module gpio_top_apb(
           in_pwdata[ 7: 0] & {8{in_pstrb[0]}}
         };
       end
-      else if ({ in_paddr[31:2], 2'b00 } == 32'h10002008) begin
+      else if ({ in_paddr[31:2], 2'b00 } == `SEG_ADDR) begin
         seg_data <= {
           in_pwdata[31:24] & {8{in_pstrb[3]}},
           in_pwdata[23:16] & {8{in_pstrb[2]}},
@@ -68,7 +74,7 @@ module gpio_top_apb(
       end
     end
     else if (next == ACCESS && !in_pwrite) begin
-      if ({ in_paddr[31:2], 2'b00 } == 32'h10002004) begin
+      if ({ in_paddr[31:2], 2'b00 } == `SWITCH_ADDR) begin
         in_prdata_r <= { 16'h0, gpio_in };
       end
     end
@@ -96,6 +102,6 @@ module gpio_top_apb(
   Segment segment_inst5(1'b0, 1'b1, 1'b1, {3'h0, seg_data[23:20]}, gpio_seg_5);
   Segment segment_inst6(1'b0, 1'b1, 1'b1, {3'h0, seg_data[27:24]}, gpio_seg_6);
   Segment segment_inst7(1'b0, 1'b1, 1'b1, {3'h0, seg_data[31:28]}, gpio_seg_7);
-
+`endif
 
 endmodule

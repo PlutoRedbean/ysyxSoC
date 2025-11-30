@@ -25,8 +25,8 @@ module vga_top_apb(
 `define VGA_ADDR        32'h21000000
 `define VGA_SIZE_WIDTH  21
 `define VGA_SIZE        2**`VGA_SIZE_WIDTH
-`define WIN_WIDTH       480
-`define WIN_HEIGHT      640
+`define WIN_WIDTH       640
+`define WIN_HEIGHT      480
 
   reg  [31:0] vmem [`VGA_SIZE-1:0];
 
@@ -46,7 +46,7 @@ module vga_top_apb(
   localparam ACCESS = 2'd2;
 
   assign addr = { 10'h0, in_paddr[23:2] };
-  assign ctrl_addr = {11'd0, v_addr} + h_addr * `WIN_WIDTH;
+  assign ctrl_addr = {11'd0, h_addr} + v_addr * `WIN_WIDTH;
   assign vga_data = vmem[ctrl_addr][23:0];
 
   always @(*) begin

@@ -280,11 +280,12 @@ import "DPI-C" function void sdram_write(input int addr, input byte data);
 // `endif
 
 `ifdef __VERILATOR__
-reg [87:0] dbg_state;
 
-always @ *
-  begin
-      case (state)
+  reg [87:0] dbg_state;
+  reg [87:0] dbg_cmd;
+
+  always @(*) begin
+    case (state)
       IDLE        : dbg_state = "IDLE"        ;
       LMR         : dbg_state = "LMR"         ;
       ACTIVE      : dbg_state = "ACTIVE"      ;
@@ -295,8 +296,23 @@ always @ *
       WRITE_WAIT  : dbg_state = "WRITE_WAIT"  ;
       WRITE_BURST : dbg_state = "WRITE_BURST" ;
       default     : dbg_state = "UNKNOWN"     ;
-      endcase
+    endcase
   end
+
+  always @(*) begin
+    case (cmd)
+      CMD_NOP       : dbg_cmd = "NOP"       ;
+      CMD_ACTIVE    : dbg_cmd = "ACTIVE"    ;
+      CMD_READ      : dbg_cmd = "READ"      ;
+      CMD_WRITE     : dbg_cmd = "WRITE"     ;
+      CMD_TERMINATE : dbg_cmd = "TERMINATE" ;
+      CMD_PRECHARGE : dbg_cmd = "PRECHARGE" ;
+      CMD_REFRESH   : dbg_cmd = "REFRESH"   ;
+      CMD_LMR       : dbg_cmd = "LMR"       ;
+      default       : dbg_cmd = "UNKNOWN"   ;
+    endcase
+  end
+
 `endif
 
 endmodule

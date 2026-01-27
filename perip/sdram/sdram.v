@@ -42,7 +42,6 @@ module sdram(
   
   reg  [14:0] mode_register ;
   wire [ 1:0] bank_addr     ;
-  reg  [12:0] row_addr_r    ;
   wire [ 8:0] col_addr      ;
 
   wire        nop           ;
@@ -144,7 +143,6 @@ module sdram(
   reg [12:0] active_row [3:0];
   always @(posedge clk) begin
     if (active_we) begin
-      row_addr_r  <= a;
       active_row[bank_addr] <= a;
     end
   end

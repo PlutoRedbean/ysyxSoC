@@ -19,8 +19,8 @@ class SDRAMIO extends Bundle {
   val we  = Output(Bool())
   val a   = Output(UInt(13.W))
   val ba  = Output(UInt(2.W))
-  val dqm = Output(UInt(2.W))
-  val dq  = Analog(16.W)
+  val dqm = Output(UInt(4.W))
+  val dq  = Analog(32.W)
 }
 
 class sdram_top_axi extends BlackBox {
@@ -42,6 +42,10 @@ class sdram_top_apb extends BlackBox {
 }
 
 class sdram extends BlackBox {
+  val io = IO(Flipped(new SDRAMIO))
+}
+
+class sdram32 extends BlackBox {
   val io = IO(Flipped(new SDRAMIO))
 }
 

@@ -223,7 +223,7 @@ module sdram(
 
   wire dq_ctrl;
 
-  assign dq_ctrl = read;
+  assign dq_ctrl = state == READ_BURST;
   assign dq = dq_ctrl ? rdata_r[15:0] : 16'bz;
 
   reg [31:0] sdram_rdata_r;

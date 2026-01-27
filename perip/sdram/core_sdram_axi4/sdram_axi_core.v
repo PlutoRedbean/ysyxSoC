@@ -262,7 +262,7 @@ begin
     //-----------------------------------------
     STATE_READ :
     begin
-        next_state_r = STATE_READ_WAIT;
+        next_state_r = STATE_IDLE;
     end
     //-----------------------------------------
     // STATE_READ_WAIT

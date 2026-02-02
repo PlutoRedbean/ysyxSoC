@@ -29,46 +29,46 @@ module apb_delayer(
   input         out_pslverr
 );
 
-  parameter R = 5;
+  parameter CORE_CLK = 521.425;
+  parameter SOC_CLK  = 100    ;
+  parameter AMP_C    = 8      ;
+  
+  // 5.21425 * 256 = 1334.848
+  localparam R = CORE_CLK / SOC_CLK ;
+  localparam S = 1 << AMP_C         ;
+  localparam C = $rtoi(R * S)       ;
 
-  localparam APB_IDLE   = 2'd0;
-  localparam APB_SETUP  = 2'd1;
-  localparam APB_ACCESS = 2'd2;
-  localparam APB_DONE   = 2'd3;
+  localparam APB_IDLE     = 2'd0;
+  localparam APB_SETUP    = 2'd1;
+  localparam APB_ACCESS   = 2'd2;
+  localparam APB_DONE     = 2'd3;
 
-  localparam DELAY_IDLE   = 3'd0;
-  localparam DELAY_START  = 3'd1;
-  localparam DELAY_SETUP  = 3'd2;
-  localparam DELAY_ACCESS = 3'd3;
-  localparam DELAY_DONE   = 3'd4;
+  localparam DELAY_IDLE   = 2'd0;
+  localparam DELAY_SETUP  = 2'd1;
+  localparam DELAY_START  = 2'd2;
+  localparam DELAY_DONE   = 2'd3;
 
   reg [1:0] apb_state, apb_next;
-  reg [2:0] delay_state, delay_next;
+  reg [1:0] delay_state, delay_next;
 
   reg  [31:0]  out_prdata_r ;
   reg          out_pready_r ;
 
-  reg  [ 2:0]  delay_cnt ;
-  wire [ 2:0]  delay_max   ;
-  wire         delay_valid ;
-  wire         delay_done  ;
+  reg  [31:0]  delay_cnt      ;
+  wire         delay_add      ;
+  wire         delay_sub      ;
+  wire         delay_done     ;
 
-  reg  [ 7:0]  apb_cnt     ;
+  reg  [31:0]  apb_cnt        ;
+  wire         apb_cnt_valid  ;
+  wire         apb_cnt_done   ;
 
-  reg  [15:0]  access_cnt     ;
-  wire         access_cnt_add ;
-  wire         access_cnt_sub ;
+  assign delay_add   = apb_cnt_valid;
+  assign delay_sub   = delay_next == DELAY_START;
+  assign delay_done  = delay_cnt  == (apb_cnt + 2);
 
-  wire         access_done ;
-
-  assign delay_max   = R;
-  assign delay_valid = delay_next != DELAY_IDLE && delay_next != DELAY_DONE;
-  assign delay_done  = delay_cnt  == delay_max - 1'd1;
-
-  assign access_cnt_add = apb_next == APB_ACCESS;
-  assign access_cnt_sub = delay_next == DELAY_ACCESS && delay_done;
-
-  assign access_done = delay_done && access_cnt == 16'd0;
+  assign apb_cnt_valid = apb_next != APB_IDLE && apb_next != APB_DONE;
+  assign apb_cnt_done = delay_done;
 
   always @(*) begin
     case (apb_state)
@@ -82,36 +82,41 @@ module apb_delayer(
 
   always @(*) begin
     case (delay_state)
-      DELAY_IDLE    : delay_next = in_psel      ? DELAY_START  : DELAY_IDLE   ;
-      DELAY_START   : delay_next = delay_done   ? DELAY_SETUP  : DELAY_START  ;
-      DELAY_SETUP   : delay_next = delay_done   ? DELAY_ACCESS : DELAY_SETUP  ;
-      DELAY_ACCESS  : delay_next = access_done  ? DELAY_DONE   : DELAY_ACCESS ;
-      DELAY_DONE    : delay_next = DELAY_IDLE;
-      default       : delay_next = DELAY_IDLE; 
+      DELAY_IDLE  : delay_next = apb_next == APB_SETUP ? DELAY_SETUP : DELAY_IDLE ;
+      DELAY_SETUP : delay_next = apb_next == APB_DONE  ? DELAY_START : DELAY_SETUP;
+      DELAY_START : delay_next = delay_done            ? DELAY_DONE  : DELAY_START;
+      DELAY_DONE  : delay_next = DELAY_IDLE;
+      default     : delay_next = DELAY_IDLE; 
     endcase
   end
 
   always @(posedge clock) begin
     if (reset) begin
-      delay_cnt <= 3'd0;
+      delay_cnt <= 32'd0;
     end
     else if (delay_done) begin
-      delay_cnt <= 3'd0;
+      delay_cnt <= 32'd0;
     end
-    else if (delay_valid) begin
-      delay_cnt <= delay_cnt + 1'd1;
+    else if (delay_add) begin
+      delay_cnt <= delay_cnt + C;
+    end
+    else if (delay_state == DELAY_SETUP && delay_sub) begin
+      delay_cnt <= (delay_cnt + C) >> AMP_C;
+    end
+    else if (delay_sub) begin
+      delay_cnt <= delay_cnt - 1'd1;
     end
   end
 
   always @(posedge clock) begin
     if (reset) begin
-      access_cnt <= 16'd0;
+      apb_cnt <= 32'd0;
     end
-    else if (access_cnt_sub) begin
-      access_cnt <= access_cnt - 1'd1;
+    else if (apb_cnt_done) begin
+      apb_cnt <= 32'd0;
     end
-    else if (access_cnt_add) begin
-      access_cnt <= access_cnt + 1'd1;
+    else if (apb_cnt_valid) begin
+      apb_cnt <= apb_cnt + 1'd1;
     end
   end
 
@@ -172,7 +177,6 @@ module apb_delayer(
       DELAY_IDLE    : dbg_delay_state = "DELAY_IDLE"  ;
       DELAY_START   : dbg_delay_state = "DELAY_START" ;
       DELAY_SETUP   : dbg_delay_state = "DELAY_SETUP" ;
-      DELAY_ACCESS  : dbg_delay_state = "DELAY_ACCESS";
       DELAY_DONE    : dbg_delay_state = "DELAY_DONE"  ;
       default       : dbg_delay_state = "UNKNOWN"     ;
     endcase

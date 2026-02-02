@@ -54,8 +54,6 @@ module apb_delayer(
   wire         delay_done  ;
 
   reg  [ 7:0]  apb_cnt     ;
-  wire         access_cnt_add ;
-  wire         access_cnt_sub ;
 
   reg  [15:0]  access_cnt     ;
   wire         access_cnt_add ;

@@ -226,11 +226,38 @@ import "DPI-C" function void psram_write(input int waddr, input byte wdata);
   end
 
   always @(posedge sck) begin
-    if (BUS_state == QPI) begin
+    if (cmd == 8'h35) begin
       test_data(32'h66666666);
     end
   end
 
 // `endif
+
+`ifdef __VERILATOR__
+
+  reg [55:0] dbg_PSRAM_state;
+  reg [55:0] dbg_BUS_state;
+
+  always @(*) begin
+    case (PSRAM_state)
+      IDLE    : dbg_PSRAM_state = "IDLE"    ;
+      INST    : dbg_PSRAM_state = "INST"    ;
+      ADDR    : dbg_PSRAM_state = "ADDR"    ;
+      WRITE   : dbg_PSRAM_state = "WRITE"   ;
+      WAIT    : dbg_PSRAM_state = "WAIT"    ;
+      READ    : dbg_PSRAM_state = "READ"    ;
+      default : dbg_PSRAM_state = "UNKNOWN" ;
+    endcase
+  end
+
+  always @(*) begin
+    case (BUS_state)
+      QSPI    : dbg_BUS_state = "QSPI"    ;
+      QPI     : dbg_BUS_state = "QSPI"    ;
+      default : dbg_BUS_state = "UNKNOWN" ;
+    endcase
+  end
+
+`endif
 
 endmodule

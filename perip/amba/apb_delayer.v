@@ -1,7 +1,4 @@
-/**
- * 521MHz
- * r = 5.21
- */
+`include "autoconf.vh"
 
 module apb_delayer(
   input         clock,
@@ -29,7 +26,7 @@ module apb_delayer(
   input         out_pslverr
 );
 
-  parameter CORE_CLK = 521.425;
+  parameter CORE_CLK = `CORE_FREQ;
   parameter SOC_CLK  = 100    ;
   parameter AMP_C    = 8      ;
   
@@ -167,7 +164,7 @@ module apb_delayer(
 
   assign in_pslverr  = out_pslverr;
 
-  `ifdef __VERILATOR__
+`ifdef __VERILATOR__
 
   reg [103:0] dbg_delay_state;
   reg [103:0] dbg_apb_state;

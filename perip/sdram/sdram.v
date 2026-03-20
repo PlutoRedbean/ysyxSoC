@@ -54,15 +54,19 @@ module sdram(
   wire        cas_cnt_done  ;
   wire        bl_cnt_valid  ;
   wire        bl_cnt_done   ;
+
+
+  wire dq_ctrl;
+  reg [2:0] dq_ctrl_r;
   
   assign nop            = cmd == CMD_NOP || cmd[3];
   assign bank_addr      = ba;
   assign col_addr       = a[8:0];
   assign mode_reg_we    = next == LMR;
   assign active_we      = next == ACTIVE;
-  assign col_addr_valid = next == READ || next == WRITE;
-  assign read           = next == READ_BURST;
-  assign write          = next == WRITE_BURST;
+  assign col_addr_valid = cmd == CMD_READ || cmd == CMD_WRITE;
+  assign read           = state == READ;
+  assign write          = state == WRITE;
 
   assign cas_latency    = mode_register[6:4];
   assign cas_cnt_valid  = next == READ_WAIT  || next == WRITE_WAIT;
@@ -70,7 +74,7 @@ module sdram(
 
   assign burst_lenth    = 1'd1 << mode_register[2:0];
   assign bl_cnt_valid   = read || write;
-  assign bl_cnt_done    = bl_cnt  == burst_lenth;
+  assign bl_cnt_done    = bl_cnt == burst_lenth - 1'd1;
 
   reg [3:0] state, next;
 
@@ -107,11 +111,13 @@ module sdram(
       end
       READ_WAIT : begin
         if (cmd == CMD_TERMINATE) next = IDLE;
+        else if (cmd == CMD_READ) next = READ;
         else if (cas_cnt_done) next = READ_BURST;
         else next = state;
       end
       READ_BURST : begin
         if (cmd == CMD_TERMINATE) next = IDLE;
+        else if (cmd == CMD_READ) next = READ;
         else if (bl_cnt_done) next = IDLE;
         else next = state;
       end
@@ -122,11 +128,13 @@ module sdram(
       end
       WRITE_WAIT : begin
         if (cmd == CMD_TERMINATE) next = IDLE;
+        else if (cmd == CMD_WRITE) next = WRITE;
         else if (cas_cnt_done) next = WRITE_BURST;
         else next = state;
       end
       WRITE_BURST : begin
         if (cmd == CMD_TERMINATE) next = IDLE;
+        else if (cmd == CMD_WRITE) next = WRITE;
         else if (bl_cnt_done) next = IDLE;
         else next = state;
       end
@@ -176,54 +184,54 @@ module sdram(
   end
 
 // Address shift registers
-  reg [2 + 13 + 9 - 1:0] addr_shift_reg [2:0];
-  reg [1:0] dqm_r [2:0];
+  reg [2 + 13 + 9 - 1:0] addr_shift_reg;
+  reg [1:0] dqm_r;
   always @(posedge clk) begin
-    dqm_r[0] <= dqm;
-    dqm_r[1] <= dqm_r[0];
-    dqm_r[2] <= dqm_r[1];
+    dqm_r <= dqm;
   end
   always @(posedge clk) begin
     if (col_addr_valid) begin
-      addr_shift_reg[0] <= { active_row[bank_addr], bank_addr, col_addr };
+      addr_shift_reg <= { active_row[bank_addr], bank_addr, col_addr };
     end
     else begin
-      addr_shift_reg[0] <= addr_shift_reg[0] + 1'd1;
+      addr_shift_reg <= addr_shift_reg + 1'd1;
     end
-  end
-  always @(posedge clk) begin
-    addr_shift_reg[1] <= addr_shift_reg[0];
-  end
-  always @(posedge clk) begin
-    addr_shift_reg[2] <= addr_shift_reg[1];
   end
 
 // wdata shift registers
-  reg [15:0] wdata_shift_reg [2:0];
+  reg [15:0] wdata_shift_reg;
   always @(posedge clk) begin
-    wdata_shift_reg[0] <= dq;
-  end
-  always @(posedge clk) begin
-    wdata_shift_reg[1] <= wdata_shift_reg[0];
-  end
-  always @(posedge clk) begin
-    wdata_shift_reg[2] <= wdata_shift_reg[1];
+    wdata_shift_reg <= dq;
   end
 
   always @(posedge clk) begin
-    state <= next;
+    if (~cke)
+      state <= IDLE;
+    else
+      state <= next;
   end
 
   wire [ 1:0] dqm_valid ;
   wire [31:0] addr      ;
   wire [31:0] wdata     ;
-  assign dqm_valid = dqm_r[cas_latency[1:0] - 1'd1];
-  assign addr  = { 4'ha, 3'h0,  addr_shift_reg[cas_latency[1:0] - 1'd1], 1'b0 };
-  assign wdata = { 16'h0000  , wdata_shift_reg[cas_latency[1:0] - 1'd1]       };
+  assign dqm_valid = dqm_r;
+  assign addr  = { 4'ha, 3'h0,  addr_shift_reg, 1'b0 };
+  assign wdata = { 16'h0000  , wdata_shift_reg       };
 
-  wire dq_ctrl;
+  always @(posedge clk) begin
+    if (cmd == CMD_READ) begin
+      dq_ctrl_r[0] <= 1'd1;
+    end
+    else begin
+      dq_ctrl_r[0] <= 1'd0;
+    end
+  end
+  always @(posedge clk) begin
+    dq_ctrl_r[1] <= dq_ctrl_r[0];
+    dq_ctrl_r[2] <= dq_ctrl_r[1];
+  end
 
-  assign dq_ctrl = state == READ_BURST;
+  assign dq_ctrl = dq_ctrl_r[cas_latency[1:0]];
   assign dq = dq_ctrl ? rdata_r[15:0] : 16'bz;
 
   reg [31:0] sdram_rdata_r;
@@ -248,13 +256,13 @@ import "DPI-C" function void sdram_write(input int addr, input byte data);
     end
   end
 
-  always @(read) begin
+  always @(posedge clk) begin
     if (read) begin
       sdram_read(addr, sdram_rdata_r);
     end
   end
 
-  always @(posedge clk, posedge read, addr) begin
+  always @(posedge clk) begin
     if (read) begin
       if (~addr[1] && dqm_valid == 2'b10) begin
         rdata_r <= { 8'h00, sdram_rdata_r[ 7:0] };

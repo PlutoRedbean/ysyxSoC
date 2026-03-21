@@ -262,7 +262,7 @@ begin
     //-----------------------------------------
     STATE_READ :
     begin
-        next_state_r = STATE_READ_WAIT;
+        next_state_r = STATE_IDLE;
     end
     //-----------------------------------------
     // STATE_READ_WAIT
@@ -284,7 +284,7 @@ begin
     //-----------------------------------------
     STATE_WRITE0 :
     begin
-        next_state_r = STATE_WRITE1;
+        next_state_r = STATE_IDLE;
     end
     //-----------------------------------------
     // STATE_WRITE1
@@ -683,7 +683,7 @@ if (rst_i)
     ack_q   <= 1'b0;
 else
 begin
-    if (state_q == STATE_WRITE1)
+    if (state_q == STATE_WRITE0)
         ack_q <= 1'b1;
     else if (rd_q[SDRAM_READ_LATENCY+1])
         ack_q <= 1'b1;

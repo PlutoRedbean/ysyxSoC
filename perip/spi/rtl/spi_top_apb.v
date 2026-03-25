@@ -94,8 +94,8 @@ wire        XIP_in_penable;
 ysyx_25050158_Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
 ysyx_25050158_Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
 `else
-Reg #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
-Reg #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
+RegWithReset #(3, NORMAL) XIP_state_r(clock, reset, XIP_next, XIP_state, 1'b1);
+RegWithReset #(2, IDLE  ) APB_state_r(clock, reset, APB_next, APB_state, 1'b1);
 `endif
 
 `ifdef TAPE_OUT_SIM

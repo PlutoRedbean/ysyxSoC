@@ -45,6 +45,7 @@ module apb_delayer(
   localparam DELAY_START  = 2'd2;
   localparam DELAY_DONE   = 2'd3;
 
+`ifdef CONFIG_SOC_DELAY
   reg [1:0] apb_state, apb_next;
   reg [1:0] delay_state, delay_next;
 
@@ -189,6 +190,21 @@ module apb_delayer(
     endcase
   end
 
-`endif
+`endif  // __VERILATOR__
+
+`else
+
+  assign out_paddr   = in_paddr;
+  assign out_psel    = in_psel;
+  assign out_penable = in_penable;
+  assign out_pprot   = in_pprot;
+  assign out_pwrite  = in_pwrite;
+  assign out_pwdata  = in_pwdata;
+  assign out_pstrb   = in_pstrb;
+  assign in_pready   = out_pready;
+  assign in_prdata   = out_prdata;
+  assign in_pslverr  = out_pslverr;
+  
+`endif  // CONFIG_SOC_DELAY
 
 endmodule

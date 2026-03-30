@@ -69,8 +69,9 @@ module axi4_delayer(
   parameter SOC_CLK  = 100;
   parameter AMP_C    = 8;
 
-  localparam S = 1 << AMP_C;
-  localparam C = $rtoi((CORE_CLK * S) / SOC_CLK);
+  localparam R = CORE_CLK / SOC_CLK ;
+  localparam S = 1 << AMP_C         ;
+  localparam C = $rtoi(R * S)       ;
 
 `ifdef CONFIG_SOC_DELAY
   reg         rd_active;
@@ -197,16 +198,16 @@ module axi4_delayer(
       if (!rd_active) begin
         if (rd_start) begin
           rd_active <= 1'b1;
-          rd_req_done <= 1'b0;
-          rd_real_cnt <= 32'd1;
-          rd_delay_cnt <= 32'd1;
+          rd_req_done <= out_arready; 
+          rd_real_cnt <= 32'd2;       
+          rd_delay_cnt <= 32'd2;
           rd_buf_cnt <= 4'd0;
           rd_wptr <= 3'd0;
           rd_rptr <= 3'd0;
         end
       end
       else begin
-        if (!rd_req_done && rd_ar_fire) begin
+        if (!rd_req_done && out_arvalid && out_arready) begin
           rd_req_done <= 1'b1;
         end
 
@@ -249,10 +250,10 @@ module axi4_delayer(
       if (!wr_active) begin
         if (wr_start) begin
           wr_active <= 1'b1;
-          wr_aw_done <= 1'b0;
-          wr_w_done <= 1'b0;
-          wr_real_cnt <= 32'd1;
-          wr_delay_cnt <= 32'd1;
+          wr_aw_done <= (in_awvalid && out_awready);
+          wr_w_done  <= (in_wvalid && in_wlast && out_wready);
+          wr_real_cnt <= 32'd2;
+          wr_delay_cnt <= 32'd2;
           wr_b_hold_valid <= 1'b0;
           wr_bid_r <= 4'd0;
           wr_bresp_r <= 2'd0;
@@ -260,10 +261,10 @@ module axi4_delayer(
         end
       end
       else begin
-        if (wr_aw_fire) begin
+        if (!wr_aw_done && out_awvalid && out_awready) begin
           wr_aw_done <= 1'b1;
         end
-        if (wr_w_fire && in_wlast) begin
+        if (!wr_w_done && out_wvalid && out_wready && in_wlast) begin
           wr_w_done <= 1'b1;
         end
 
